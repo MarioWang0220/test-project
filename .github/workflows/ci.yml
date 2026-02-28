@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          npm ci || npm install
+
+      - name: Run tests (if test script exists)
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          if node -e "const p=require('./package.json'); process.exit((p.scripts && p.scripts.test) ? 0 : 1)"; then
+            npm test
+          else
+            echo "No test script found in package.json; skipping tests and continuing with success."
+          fi
+
+      - name: Basic checks (no package.json)
+        if: ${{ hashFiles('package.json') == '' }}
+        shell: bash
+        run: |
+          test -f README.md || (echo "README.md is required" && exit 1)
+          echo "README.md exists."
+          echo "Repository file list:"
+          ls -la
